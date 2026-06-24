@@ -478,7 +478,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 
 <div class="toast" id="toast"></div>
 
-<script>
 // ── DEFAULT HABIT LIBRARY ──
 const HABIT_LIBRARY = [
   {id:'workout',  icon:'🏋️', label:'Workout',         sub:'Any exercise session'},
@@ -497,17 +496,17 @@ const HABIT_LIBRARY = [
 
 let profile = {};
 let selectedHabitIds = ['workout','walk','sugar','junk','sleep6','active'];
-let customHabits = [];  // {id, icon, label, sub}
+let customHabits = [];
 
 let state = {
   done:[], gt:0, bc:0, sleep:6, steps:0, log:[], streak:0,
   sleepGoal:7.5, stepsGoal:8000,
-  lastSavedDate: '',   // YYYY-MM-DD of last saveDay() call — for streak logic
-  stepsDate: '',       // YYYY-MM-DD when steps were last counted — for midnight reset
-  stepsBase: 0         // steps saved before current pedometer session
+  lastSavedDate: '',
+  stepsDate: '',
+  stepsBase: 0
 };
 
-// ── SETUP / ONBOARDING ──
+// ── SETUP ──
 let currentStep = 0;
 
 function goStep(n) {
@@ -515,6 +514,17 @@ function goStep(n) {
   currentStep = n;
   document.getElementById('step-'+currentStep).classList.add('active');
   window.scrollTo(0,0);
+  if (n === 4) {
+    document.getElementById('welcome-name').textContent = profile.name;
+    const chosen = getAllHabits().filter(h => selectedHabitIds.includes(h.id));
+    document.getElementById('summary-box').innerHTML = `
+      <div style="font-size:13px;color:var(--muted);line-height:1.9">
+        👤 <strong style="color:var(--text)">${profile.name}</strong>, ${profile.age} yrs &nbsp;·&nbsp; BMI ${profile.bmi}<br>
+        😴 Sleep goal: <strong style="color:var(--text)">${parseFloat(document.getElementById('sleep-goal-slider').value).toFixed(1)} hrs</strong><br>
+        👣 Steps goal: <strong style="color:var(--text)">${parseInt(document.getElementById('steps-goal-slider').value).toLocaleString()} steps</strong><br>
+        ✅ Habits: <strong style="color:var(--text)">${chosen.map(h=>h.label).join(', ')}</strong>
+      </div>`;
+  }
 }
 
 function calcBMI() {
@@ -612,26 +622,6 @@ function finishSetup() {
   initApp();
 }
 
-// show summary on step 4
-function goStep(n) {
-  document.getElementById('step-'+currentStep).classList.remove('active');
-  currentStep = n;
-  document.getElementById('step-'+currentStep).classList.add('active');
-  window.scrollTo(0,0);
-  if (n === 4) {
-    document.getElementById('welcome-name').textContent = profile.name;
-    const allHabits = getAllHabits();
-    const chosen = allHabits.filter(h => selectedHabitIds.includes(h.id));
-    document.getElementById('summary-box').innerHTML = `
-      <div style="font-size:13px;color:var(--muted);line-height:1.9">
-        👤 <strong style="color:var(--text)">${profile.name}</strong>, ${profile.age} yrs &nbsp;·&nbsp; BMI ${profile.bmi}<br>
-        😴 Sleep goal: <strong style="color:var(--text)">${parseFloat(document.getElementById('sleep-goal-slider').value).toFixed(1)} hrs</strong><br>
-        👣 Steps goal: <strong style="color:var(--text)">${parseInt(document.getElementById('steps-goal-slider').value).toLocaleString()} steps</strong><br>
-        ✅ Habits: <strong style="color:var(--text)">${chosen.map(h=>h.label).join(', ')}</strong>
-      </div>`;
-  }
-}
-
 // ── HELPERS ──
 function getAllHabits() {
   const lib = HABIT_LIBRARY.filter(h => selectedHabitIds.includes(h.id));
@@ -665,66 +655,52 @@ function loadAll() {
     if (h) { const hd = JSON.parse(h); selectedHabitIds = hd.selectedHabitIds||[]; customHabits = hd.customHabits||[]; }
     if (s) { state = {...state, ...JSON.parse(s)}; }
   } catch(e) {}
-  // Run midnight checks every time app loads / reopens
   checkMidnightReset();
 }
 
-// ── MIDNIGHT RESET: steps reset if it's a new day ──
 function checkMidnightReset() {
   const today = getTodayKey();
-  // Steps: reset if stepsDate is set but is a previous day
   if (state.stepsDate && state.stepsDate !== today) {
     state.steps     = 0;
     state.stepsBase = 0;
     state.stepsDate = today;
-    console.log('[FitTrack] New day — steps reset to 0');
   }
-  // If no stepsDate yet, stamp today
   if (!state.stepsDate) state.stepsDate = today;
-
-  // Habits/drinks/sleep: reset today's state if it's a new day since last save
   if (state.lastSavedDate && state.lastSavedDate !== today) {
-    // Don't wipe log — just clear today's in-progress state
     state.done  = [];
     state.gt    = 0;
     state.bc    = 0;
     state.sleep = state.sleepGoal || 7.5;
-    console.log('[FitTrack] New day — daily state reset');
   }
 }
 
-// ── STREAK: schedule next midnight check while app is open ──
 function scheduleMidnightCheck() {
   const now  = new Date();
-  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5); // 00:00:05 next day
-  const msUntilMidnight = next - now;
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5);
+  const ms   = next - now;
   setTimeout(() => {
     checkMidnightReset();
     saveAll();
-    // Re-init UI so steps counter shows 0 and date updates
     if (profile.setupDone) initApp();
-    scheduleMidnightCheck(); // reschedule for next midnight
-  }, msUntilMidnight);
-  console.log('[FitTrack] Next midnight reset in', Math.round(msUntilMidnight/60000), 'min');
+    scheduleMidnightCheck();
+  }, ms);
 }
 
 // ── APP INIT ──
 function initApp() {
-  document.getElementById('topbar-date').textContent  = getDateStr();
-  document.getElementById('streak-val').textContent   = state.streak;
-  document.getElementById('sleep-slider').value       = state.sleep;
-  document.getElementById('gt-val').textContent       = state.gt;
-  document.getElementById('bc-val').textContent       = state.bc;
-  // Steps are persisted in state — restored from localStorage automatically
+  document.getElementById('topbar-date').textContent = getDateStr();
+  document.getElementById('streak-val').textContent  = state.streak;
+  document.getElementById('sleep-slider').value      = state.sleep;
+  document.getElementById('gt-val').textContent      = state.gt;
+  document.getElementById('bc-val').textContent      = state.bc;
   updateStepsUI();
   updateSleep(state.sleep, false);
   renderHabits();
   updateScore();
   scheduleMidnightCheck();
-  // Pedometer auto-starts via 'deviceready' Capacitor event
 }
 
-// ── TODAY ──
+// ── HABITS ──
 function renderHabits() {
   const grid = document.getElementById('habit-grid');
   grid.innerHTML = '';
@@ -760,33 +736,34 @@ function updateScore() {
   document.getElementById('score-msg').textContent   = m;
 }
 
-// ── PEDOMETER (Native Android Step Counter via Capacitor) ──
-let pedometerActive  = false;
+// ── PEDOMETER ──
+let pedometerActive    = false;
 let stepListenerHandle = null;
-let stepBaseCount    = null; // hardware counter offset at session start
+let Pedometer          = null;
 
-// Capacitor plugin reference — loaded after deviceready
-let Pedometer = null;
-
+// Fires when Capacitor native bridge is ready
 document.addEventListener('deviceready', () => {
   try {
-    Pedometer = window.Capacitor?.Plugins?.CapacitorPedometerPlugin || null;
-    console.log('[FitTrack] Capacitor ready, Pedometer:', Pedometer ? 'found' : 'not found');
-  } catch(e) { console.warn('[FitTrack] Capacitor init error', e); }
+    // Correct plugin name as registered: @CapacitorPlugin(name = "CapacitorPedometer")
+    Pedometer = window.Capacitor?.Plugins?.CapacitorPedometer || null;
+    console.log('[FitTrack] deviceready — Pedometer:', Pedometer ? 'found ✅' : 'not found ❌');
+  } catch(e) { console.warn('[FitTrack] deviceready error', e); }
   autoStartPedometer();
 }, false);
 
-async function togglePedometer() {
-  if (pedometerActive) pausePedometer();
-  else resumePedometer();
-}
-
 async function autoStartPedometer() {
+  if (!Pedometer) {
+    console.log('[FitTrack] No Pedometer plugin — unavailable');
+    updatePedometerUI('unavailable');
+    return;
+  }
   try {
-    if (!Pedometer) {
-      // Fallback: still in browser/PWA mode
-      console.log('[FitTrack] No native pedometer, skipping auto-start');
+    // Check hardware availability first
+    const info = await Pedometer.isAvailable();
+    console.log('[FitTrack] isAvailable:', JSON.stringify(info));
+    if (!info?.stepCounting) {
       updatePedometerUI('unavailable');
+      showToast('Step counter not available on this device');
       return;
     }
     await startNativePedometer();
@@ -799,52 +776,58 @@ async function autoStartPedometer() {
 async function startNativePedometer() {
   if (!Pedometer) return;
   try {
-    // Request permission (Android 10+ requires ACTIVITY_RECOGNITION)
+    // Request ACTIVITY_RECOGNITION permission (Android 10+)
     const perm = await Pedometer.requestPermissions();
-    if (perm?.activityRecognition !== 'granted' && perm?.activityRecognition !== undefined) {
+    console.log('[FitTrack] permissions:', JSON.stringify(perm));
+    if (perm?.activityRecognition === 'denied') {
       updatePedometerUI('denied');
+      showToast('Activity permission denied');
       return;
     }
 
-    // Subscribe to step updates — fires every ~1 second with cumulative count
-    stepListenerHandle = await Pedometer.addListener('step', (data) => {
-      // data.numberOfSteps = cumulative hardware counter since boot
-      // We track the delta from when we started this session
-      if (stepBaseCount === null) stepBaseCount = data.numberOfSteps;
-      const sessionSteps = data.numberOfSteps - stepBaseCount;
-      // Add session steps ON TOP of any steps already saved today
-      const savedBase = state.stepsBase || 0;
-      state.steps = savedBase + Math.max(0, sessionSteps);
+    // Register listener BEFORE calling start
+    // Event name: 'measurement', data: { numberOfSteps, startDate, endDate }
+    stepListenerHandle = await Pedometer.addListener('measurement', (data) => {
+      console.log('[FitTrack] measurement:', JSON.stringify(data));
+      const sessionSteps = data.numberOfSteps || 0;
+      state.steps     = (state.stepsBase || 0) + sessionSteps;
       state.stepsDate = getTodayKey();
       updateStepsUI();
       if (state.steps % 20 === 0) saveAll();
     });
 
+    // Start the native Android TYPE_STEP_COUNTER sensor
+    await Pedometer.startMeasurementUpdates();
+
     pedometerActive = true;
+    state.stepsDate = getTodayKey();
     updatePedometerUI(true);
-    console.log('[FitTrack] Native pedometer started');
+    console.log('[FitTrack] Pedometer started ✅');
   } catch(e) {
     console.warn('[FitTrack] startNativePedometer error:', e);
     updatePedometerUI('unavailable');
   }
 }
 
-function pausePedometer() {
-  if (stepListenerHandle) {
-    stepListenerHandle.remove();
-    stepListenerHandle = null;
-  }
-  // Save current steps as the base for next resume
+async function pausePedometer() {
+  try {
+    if (stepListenerHandle) { stepListenerHandle.remove(); stepListenerHandle = null; }
+    if (Pedometer) await Pedometer.stopMeasurementUpdates();
+  } catch(e) { console.warn('[FitTrack] pausePedometer error:', e); }
   state.stepsBase = state.steps;
-  stepBaseCount   = null;
   pedometerActive = false;
   updatePedometerUI(false);
   saveAll();
 }
 
-function resumePedometer() {
-  stepBaseCount = null; // reset base so next event sets it fresh
-  startNativePedometer();
+async function resumePedometer() {
+  state.stepsBase = state.steps;
+  await startNativePedometer();
+}
+
+async function togglePedometer() {
+  if (pedometerActive) await pausePedometer();
+  else await resumePedometer();
 }
 
 function updatePedometerUI(status) {
@@ -866,39 +849,39 @@ function updatePedometerUI(status) {
   }
 }
 
-function addSteps(delta) {
-  state.steps = Math.max(0, state.steps + delta);
-  saveAll(); updateStepsUI();
-}
-
 function resetSteps() {
   if (!confirm('Reset step count to 0?')) return;
   const wasActive = pedometerActive;
   if (wasActive) pausePedometer();
   state.steps     = 0;
   state.stepsBase = 0;
-  stepBaseCount   = null;
-  saveAll();
-  updateStepsUI();
-  if (wasActive) resumePedometer();
+  saveAll(); updateStepsUI();
+  if (wasActive) setTimeout(() => resumePedometer(), 300);
   showToast('Steps reset to 0');
+}
+
+function addSteps(delta) {
+  state.steps = Math.max(0, state.steps + delta);
+  saveAll(); updateStepsUI();
 }
 
 function updateStepsUI() {
   const goal = state.stepsGoal || 8000;
-  const pct  = Math.min(100, Math.round((state.steps/goal)*100));
-  document.getElementById('steps-count').textContent = state.steps.toLocaleString();
-  document.getElementById('steps-bar').style.width   = pct+'%';
-  document.getElementById('steps-bar').style.background = pct>=100?'var(--green)':'var(--blue)';
-  document.getElementById('steps-goal-label').textContent = `Goal: ${goal.toLocaleString()} steps · ${pct}%`;
+  const pct  = Math.min(100, Math.round((state.steps / goal) * 100));
+  document.getElementById('steps-count').textContent         = state.steps.toLocaleString();
+  document.getElementById('steps-bar').style.width           = pct + '%';
+  document.getElementById('steps-bar').style.background      = pct >= 100 ? 'var(--green)' : 'var(--blue)';
+  document.getElementById('steps-goal-label').textContent    = `Goal: ${goal.toLocaleString()} steps · ${pct}%`;
 }
 
+// ── DRINKS ──
 function adj(key, delta) {
   state[key] = Math.max(0, state[key]+delta);
   document.getElementById(key+'-val').textContent = state[key];
   saveAll();
 }
 
+// ── SLEEP ──
 function updateSleep(v, doSave) {
   state.sleep = parseFloat(v);
   document.getElementById('sleep-hrs').textContent = state.sleep.toFixed(1);
@@ -909,7 +892,7 @@ function updateSleep(v, doSave) {
     badge.className='sleep-badge good'; badge.textContent='Goal met ✓';
     msg.textContent=`Great! You hit your ${goal}hr sleep goal.`;
     if (!state.done.includes('sleep6')) { state.done.push('sleep6'); renderHabits(); updateScore(); }
-  } else if (state.sleep >= goal-1) {
+  } else if (state.sleep >= goal - 1) {
     badge.className='sleep-badge ok'; badge.textContent='Close!';
     msg.textContent=`Just ${(goal-state.sleep).toFixed(1)}hrs short of your ${goal}hr goal.`;
     if (!state.done.includes('sleep6')) { state.done.push('sleep6'); renderHabits(); updateScore(); }
@@ -921,43 +904,32 @@ function updateSleep(v, doSave) {
   if (doSave !== false) saveAll();
 }
 
+// ── SAVE DAY ──
 function saveDay() {
   const todayKey = getTodayKey();
   const habits   = getAllHabits().filter(h => selectedHabitIds.includes(h.id));
   const entry    = {
     dateKey: todayKey, date: getDateStr(), time: getTimeStr(), ts: Date.now(),
     habits: [...state.done], gt: state.gt, bc: state.bc,
-    sleep: state.sleep, steps: state.steps, score: state.done.filter(id=>selectedHabitIds.includes(id)).length,
+    sleep: state.sleep, steps: state.steps,
+    score: state.done.filter(id=>selectedHabitIds.includes(id)).length,
     total: habits.length
   };
   const idx   = state.log.findIndex(e => e.dateKey === todayKey);
   const isNew = idx === -1;
-
   if (isNew) {
     state.log.unshift(entry);
     if (state.log.length > 30) state.log = state.log.slice(0, 30);
-
-    // ── Streak logic: only increment if yesterday was also logged ──
-    const yesterday = getYesterdayKey();
+    const yesterday      = getYesterdayKey();
     const loggedYesterday = state.log.some(e => e.dateKey === yesterday);
-    const noPriorLog      = state.log.length === 1; // very first ever entry
-
-    if (noPriorLog || loggedYesterday) {
-      state.streak += 1;
-    } else {
-      // Gap detected — restart streak from 1
-      state.streak = 1;
-    }
-    state.lastSavedDate = todayKey;
+    const noPriorLog     = state.log.length === 1;
+    state.streak = (noPriorLog || loggedYesterday) ? state.streak + 1 : 1;
+    state.lastSavedDate  = todayKey;
     document.getElementById('streak-val').textContent = state.streak;
-
   } else {
-    // Updating same day — no streak change, just update entry
-    state.log[idx] = entry;
+    state.log[idx]      = entry;
     state.lastSavedDate = todayKey;
   }
-
-  // Stamp stepsDate so midnight reset knows when steps were counted
   state.stepsDate = todayKey;
   saveAll();
   showToast(isNew ? 'Day saved! 🎯' : 'Log updated! ✏️');
@@ -1010,9 +982,8 @@ function renderStats() {
   const totalBc  = state.log.reduce((s,e)=>s+e.bc,0);
   const allH     = getAllHabits().filter(h=>selectedHabitIds.includes(h.id));
   const counts   = {};
-  allH.forEach(h => counts[h.id]=0);
-  state.log.forEach(e => e.habits.forEach(id=>{ if(counts[id]!==undefined) counts[id]++; }));
-
+  allH.forEach(h => counts[h.id] = 0);
+  state.log.forEach(e => e.habits.forEach(id => { if (counts[id]!==undefined) counts[id]++; }));
   let html = `<div class="stat-grid">
     <div class="stat-box"><div class="stat-val" style="color:var(--green)">${avgScore}%</div><div class="stat-label">avg completion</div></div>
     <div class="stat-box"><div class="stat-val" style="color:var(--blue)">${avgSleep}h</div><div class="stat-label">avg sleep</div></div>
@@ -1022,7 +993,7 @@ function renderStats() {
   <div class="sec-label" style="margin-bottom:10px">habit consistency</div>
   <div class="consist-card">`;
   allH.forEach(h => {
-    const pct = days>0?Math.round((counts[h.id]/days)*100):0;
+    const pct = days > 0 ? Math.round((counts[h.id]/days)*100) : 0;
     html += `<div class="consist-row">
       <div class="consist-top"><span>${h.icon} ${h.label}</span><span style="color:var(--muted);font-weight:600">${pct}%</span></div>
       <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
@@ -1039,10 +1010,10 @@ function renderProfile() {
   const cont = document.getElementById('profile-content');
   const bmi  = profile.bmi;
   let bmiCat = '—', bmiColor = 'var(--muted)';
-  if (bmi < 18.5) { bmiCat='Underweight'; bmiColor='var(--blue)'; }
-  else if (bmi<25){ bmiCat='Normal';      bmiColor='var(--green)';}
-  else if (bmi<30){ bmiCat='Overweight';  bmiColor='var(--amber)';}
-  else            { bmiCat='Obese';       bmiColor='var(--red)';  }
+  if (bmi < 18.5)      { bmiCat='Underweight'; bmiColor='var(--blue)';  }
+  else if (bmi < 25)   { bmiCat='Normal';      bmiColor='var(--green)'; }
+  else if (bmi < 30)   { bmiCat='Overweight';  bmiColor='var(--amber)'; }
+  else                 { bmiCat='Obese';        bmiColor='var(--red)';   }
   const allH = getAllHabits().filter(h=>selectedHabitIds.includes(h.id));
   cont.innerHTML = `
     <div class="profile-card">
@@ -1087,7 +1058,7 @@ function switchScreen(name, btn) {
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2500);
+  setTimeout(()=>t.classList.remove('show'), 2500);
 }
 
 // ── BOOT ──
@@ -1095,7 +1066,7 @@ loadAll();
 if (profile.setupDone) {
   document.getElementById('setup-wrap').style.display = 'none';
   document.getElementById('app-wrap').style.display   = 'block';
-  initApp(); // scheduleMidnightCheck is called inside initApp
+  initApp();
 } else {
   document.getElementById('setup-wrap').style.display = 'block';
   document.getElementById('app-wrap').style.display   = 'none';
@@ -1106,6 +1077,5 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(e=>console.log('SW:',e));
   });
 }
-</script>
 </body>
 </html>
