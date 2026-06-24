@@ -770,7 +770,7 @@ let Pedometer = null;
 
 document.addEventListener('deviceready', () => {
   try {
-    Pedometer = window.Capacitor?.Plugins?.CapacitorPedometer || null;
+    Pedometer = window.Capacitor?.Plugins?.CapacitorPedometerPlugin || null;
     console.log('[FitTrack] Capacitor ready, Pedometer:', Pedometer ? 'found' : 'not found');
   } catch(e) { console.warn('[FitTrack] Capacitor init error', e); }
   autoStartPedometer();
