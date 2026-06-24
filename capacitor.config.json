@@ -1,0 +1,12 @@
+{
+  "appId": "com.fittrack.app",
+  "appName": "FitTrack",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0f1117"
+  },
+  "plugins": {
+    "CapacitorPedometer": {}
+  }
+}

@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitTrack">
+<title>FitTrack — Daily Habit Tracker</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<script src="capacitor.js"></script>
+<style>
+:root{
+  --bg:#0f1117;--card:#1f2235;--border:rgba(255,255,255,0.08);--border-h:rgba(255,255,255,0.16);
+  --text:#f0f2f8;--muted:#7a7f9a;
+  --green:#22c55e;--gbg:rgba(34,197,94,0.12);--gborder:rgba(34,197,94,0.35);
+  --amber:#f59e0b;--abg:rgba(245,158,11,0.1);
+  --blue:#60a5fa;--bbg:rgba(96,165,250,0.1);
+  --red:#f87171;--rbg:rgba(248,113,113,0.1);
+  --purple:#a78bfa;--pbg:rgba(167,139,250,0.1);
+  --r:16px;--rs:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden}
+body{padding-bottom:80px}
+
+/* ── SETUP / ONBOARDING ── */
+#setup-wrap{position:fixed;inset:0;background:var(--bg);z-index:999;overflow-y:auto;padding-bottom:40px}
+.setup-inner{max-width:480px;margin:0 auto;padding:24px 20px}
+.setup-logo{text-align:center;padding:32px 0 24px}
+.setup-logo .em{font-size:52px;display:block;margin-bottom:10px}
+.setup-logo h1{font-size:26px;font-weight:700;letter-spacing:-.5px}
+.setup-logo p{font-size:14px;color:var(--muted);margin-top:6px}
+.step{display:none}.step.active{display:block}
+.step-head{margin-bottom:20px}
+.step-head .step-num{font-size:11px;font-weight:600;color:var(--green);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.step-head h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
+.step-head p{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.5}
+.progress-bar{height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin-bottom:28px;overflow:hidden}
+.progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .4s ease}
+
+/* form */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:7px}
+.field input,.field select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:13px 14px;font-size:15px;color:var(--text);outline:none;transition:border-color .15s;-webkit-appearance:none}
+.field input:focus,.field select:focus{border-color:var(--green)}
+.field select option{background:#1f2235}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-hint{font-size:11px;color:var(--muted);margin-top:5px}
+.bmi-badge{display:inline-block;margin-top:8px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+
+/* habit picker */
+.habit-pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+.hpick{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:12px;cursor:pointer;transition:all .15s;user-select:none;-webkit-user-select:none}
+.hpick:active{transform:scale(.97)}
+.hpick.sel{background:var(--gbg);border-color:var(--gborder)}
+.hpick .hpick-icon{font-size:22px;margin-bottom:6px}
+.hpick .hpick-label{font-size:12px;font-weight:600;color:var(--text)}
+.hpick .hpick-check{float:right;font-size:14px;color:var(--green);display:none}
+.hpick.sel .hpick-check{display:inline}
+
+/* custom habit add */
+.add-habit-row{display:flex;gap:8px;margin-bottom:8px}
+.add-habit-row input{flex:1;background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:11px 13px;font-size:14px;color:var(--text);outline:none}
+.add-habit-row input:focus{border-color:var(--green)}
+.add-habit-row button{background:var(--green);border:none;border-radius:var(--rs);padding:11px 16px;color:#fff;font-size:20px;cursor:pointer;font-weight:700}
+.custom-tag{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--gborder);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--green);margin:4px 4px 4px 0}
+.custom-tag button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;line-height:1}
+
+/* goal sliders */
+.goal-row{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.goal-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.goal-label{font-size:14px;font-weight:600}
+.goal-val{font-size:18px;font-weight:700;color:var(--green)}
+.goal-unit{font-size:12px;color:var(--muted);margin-left:3px}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:rgba(255,255,255,0.1);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--green);cursor:pointer;box-shadow:0 0 0 3px rgba(34,197,94,.25)}
+
+/* nav btns */
+.nav-btns{display:flex;gap:10px;margin-top:24px}
+.btn-back{flex:0 0 48px;background:var(--card);border:1px solid var(--border);border-radius:var(--rs);color:var(--muted);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.btn-next{flex:1;background:var(--green);border:none;border-radius:var(--rs);padding:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-next:active{opacity:.85}
+.btn-next-outline{flex:1;background:transparent;border:1px solid var(--border);border-radius:var(--rs);padding:14px;color:var(--muted);font-size:15px;font-weight:600;cursor:pointer}
+
+/* ── MAIN APP ── */
+#app-wrap{display:none}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(15,17,23,.92);backdrop-filter:blur(12px);padding:14px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.topbar h1{font-size:19px;font-weight:700;letter-spacing:-.3px}
+.topbar .date{font-size:11px;color:var(--muted);margin-top:1px}
+.streak-badge{background:var(--abg);border:1px solid rgba(245,158,11,.25);border-radius:20px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--amber)}
+.section{padding:16px 20px 0}
+.sec-label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
+
+/* score card */
+.score-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin:14px 20px 0;display:flex;align-items:center;gap:16px}
+.score-ring{position:relative;width:64px;height:64px;flex-shrink:0}
+.score-ring svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:5}
+.ring-fill{fill:none;stroke:var(--green);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .4s ease}
+.score-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num{font-size:20px;font-weight:700;line-height:1}
+.score-tot{font-size:10px;color:var(--muted)}
+.score-title{font-size:15px;font-weight:600;margin-bottom:3px}
+.score-msg{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* steps card */
+.steps-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:14px}
+.steps-icon{font-size:28px;flex-shrink:0}
+.steps-info{flex:1}
+.steps-count{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.steps-goal{font-size:12px;color:var(--muted);margin-top:2px}
+.steps-bar-wrap{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-top:8px;overflow:hidden}
+.steps-bar{height:100%;border-radius:3px;background:var(--blue);transition:width .4s}
+.steps-btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.sbtn{background:var(--card);border:1px solid var(--border-h);border-radius:8px;color:var(--text);font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.sbtn:active{background:rgba(255,255,255,.1)}
+
+/* habits */
+.habit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.habit-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;user-select:none;-webkit-user-select:none}
+.habit-card:active{transform:scale(.97)}
+.habit-card.done{background:var(--gbg);border-color:var(--gborder)}
+.hicon{font-size:24px;margin-bottom:8px;display:block}
+.hlabel{font-size:13px;font-weight:600;margin-bottom:2px}
+.hsub{font-size:11px;color:var(--muted);line-height:1.4}
+.habit-card.done .hsub{color:rgba(34,197,94,.7)}
+.hcheck{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border-h);display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .15s}
+.habit-card.done .hcheck{background:var(--green);border-color:var(--green);color:#fff}
+
+/* drinks */
+.counter-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.drink-row{display:flex;align-items:center;gap:10px;padding:10px 0}
+.drink-row:not(:last-child){border-bottom:1px solid var(--border)}
+.drink-icon-lg{font-size:22px;width:36px;text-align:center}
+.drink-info{flex:1}
+.dname{font-size:13px;font-weight:600}
+.dsub{font-size:11px;color:var(--muted)}
+.dcounter{display:flex;align-items:center;gap:10px}
+.cbtn{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border-h);background:transparent;color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cbtn:active{background:rgba(255,255,255,.1);transform:scale(.94)}
+.cval{font-size:16px;font-weight:600;min-width:22px;text-align:center}
+
+/* sleep */
+.sleep-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.sleep-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sleep-hrs{font-size:28px;font-weight:700}
+.sleep-unit{font-size:13px;color:var(--muted)}
+.sleep-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
+.sleep-badge.good{background:var(--gbg);color:var(--green)}
+.sleep-badge.ok{background:var(--abg);color:var(--amber)}
+.sleep-badge.low{background:var(--rbg);color:var(--red)}
+.sleep-msg{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+
+.save-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 40px);margin:14px 20px 0;padding:14px;background:var(--green);border:none;border-radius:var(--r);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s}
+.save-btn:active{opacity:.85;transform:scale(.98)}
+
+/* log */
+.log-empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:14px}
+.log-emoji{font-size:40px;margin-bottom:12px}
+.log-entry-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px}
+.log-entry-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.log-entry-date{font-size:13px;font-weight:600}
+.log-entry-time{font-size:11px;color:var(--muted);margin-top:2px}
+.log-entry-score{font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--gbg);color:var(--green);white-space:nowrap}
+.log-pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.lpill{font-size:11px;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--muted)}
+.lpill.done{background:var(--gbg);color:var(--green)}
+.log-meta{font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+
+/* stats */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center}
+.stat-val{font-size:26px;font-weight:700;line-height:1}
+.stat-label{font-size:11px;color:var(--muted);margin-top:5px}
+.consist-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.consist-row{margin-bottom:12px}
+.consist-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+.pbar-wrap{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.pbar{height:100%;border-radius:3px;background:var(--green)}
+
+/* profile tab */
+.profile-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:12px}
+.profile-avatar{width:60px;height:60px;border-radius:50%;background:var(--gbg);border:2px solid var(--gborder);display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:12px}
+.profile-name{font-size:18px;font-weight:700;margin-bottom:2px}
+.profile-meta{font-size:13px;color:var(--muted)}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px}
+.info-row:last-child{border-bottom:none}
+.info-row .label{color:var(--muted)}
+.info-row .val{font-weight:600}
+.edit-btn{width:calc(100% - 40px);margin:14px 20px 0;padding:13px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-size:14px;font-weight:600;cursor:pointer}
+.edit-btn:active{background:rgba(255,255,255,.05)}
+
+/* bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(26,29,39,.96);backdrop-filter:blur(12px);border-top:1px solid var(--border);display:flex;z-index:100}
+.bnav{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 0 13px;cursor:pointer;font-size:11px;color:var(--muted);gap:3px;border:none;background:transparent;transition:color .15s}
+.bnav .bi{font-size:21px}
+.bnav.active{color:var(--green)}
+
+.screen{display:none}.screen.active{display:block;padding-bottom:10px}
+
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);border:1px solid var(--gborder);border-radius:30px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--green);opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:300}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ════════════════ SETUP ════════════════ -->
+<div id="setup-wrap">
+<div class="setup-inner">
+
+  <!-- Landing -->
+  <div id="step-0" class="step active">
+    <div class="setup-logo">
+      <span class="em">💪</span>
+      <h1>FitTrack</h1>
+      <p>Your personal daily habit & fitness tracker</p>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:24px">
+      <div style="font-size:13px;color:var(--muted);line-height:1.7">
+        ✅ Track workouts, walks & healthy habits<br>
+        👣 Count your daily steps<br>
+        😴 Monitor sleep against your goal<br>
+        ☕ Log green tea & black coffee<br>
+        📊 See streaks, stats & consistency
+      </div>
+    </div>
+    <button class="btn-next" onclick="goStep(1)">Get started →</button>
+  </div>
+
+  <!-- Step 1: Profile -->
+  <div id="step-1" class="step">
+    <div class="progress-bar"><div class="progress-fill" style="width:25%"></div></div>
+    <div class="step-head">
+      <div class="step-num">Step 1 of 4</div>
+      <h2>Tell us about you</h2>
+      <p>We'll personalise your goals and BMI based on this.</p>
+    </div>
+    <div class="field">
+      <label>Your name</label>
+      <input type="text" id="inp-name" placeholder="e.g. Thakur" maxlength="30">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Age</label>
+        <input type="number" id="inp-age" placeholder="25" min="10" max="99">
+      </div>
+      <div class="field">
+        <label>Gender</label>
+        <select id="inp-gender">
+          <option value="">Select</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Height (cm)</label>
+        <input type="number" id="inp-height" placeholder="175" min="100" max="250" oninput="calcBMI()">
+      </div>
+      <div class="field">
+        <label>Weight (kg)</label>
+        <input type="number" id="inp-weight" placeholder="70" min="30" max="300" oninput="calcBMI()">
+      </div>
+    </div>
+    <div id="bmi-box" style="display:none;margin-bottom:8px">
+      <span class="bmi-badge" id="bmi-badge"></span>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-back" onclick="goStep(0)">←</button>
+      <button class="btn-next" onclick="validateProfile()">Next →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Habits -->
+  <div id="step-2" class="step">
+    <div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div>
+    <div class="step-head">
+      <div class="step-num">Step 2 of 4</div>
+      <h2>Choose your habits</h2>
+      <p>Select all that apply. You can also add your own below.</p>
+    </div>
+    <div class="habit-pick-grid" id="habit-picker"></div>
+    <div style="margin-bottom:12px">
+      <div class="sec-label" style="margin-bottom:8px">add your own habit</div>
+      <div class="add-habit-row">
+        <input type="text" id="custom-habit-inp" placeholder="e.g. Meditate, No alcohol…" maxlength="30">
+        <button onclick="addCustomHabit()">+</button>
+      </div>
+      <div id="custom-tags"></div>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-back" onclick="goStep(1)">←</button>
+      <button class="btn-next" onclick="validateHabits()">Next →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Goals -->
+  <div id="step-3" class="step">
+    <div class="progress-bar"><div class="progress-fill" style="width:75%"></div></div>
+    <div class="step-head">
+      <div class="step-num">Step 3 of 4</div>
+      <h2>Set your daily goals</h2>
+      <p>These will be used to measure your progress each day.</p>
+    </div>
+
+    <div class="goal-row">
+      <div class="goal-row-top">
+        <span class="goal-label">😴 Sleep goal</span>
+        <span><span class="goal-val" id="sleep-goal-val">7.5</span><span class="goal-unit">hrs</span></span>
+      </div>
+      <input type="range" min="4" max="12" step="0.5" value="7.5" oninput="document.getElementById('sleep-goal-val').textContent=parseFloat(this.value).toFixed(1)" id="sleep-goal-slider">
+    </div>
+
+    <div class="goal-row">
+      <div class="goal-row-top">
+        <span class="goal-label">👣 Daily steps goal</span>
+        <span><span class="goal-val" id="steps-goal-val">8000</span><span class="goal-unit">steps</span></span>
+      </div>
+      <input type="range" min="2000" max="20000" step="500" value="8000" oninput="document.getElementById('steps-goal-val').textContent=parseInt(this.value).toLocaleString()" id="steps-goal-slider">
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn-back" onclick="goStep(2)">←</button>
+      <button class="btn-next" onclick="goStep(4)">Next →</button>
+    </div>
+  </div>
+
+  <!-- Step 4: All set -->
+  <div id="step-4" class="step">
+    <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+    <div style="text-align:center;padding:40px 0 28px">
+      <div style="font-size:56px;margin-bottom:14px">🎉</div>
+      <h2 style="font-size:22px;margin-bottom:8px">You're all set!</h2>
+      <p style="font-size:14px;color:var(--muted);line-height:1.6">Welcome, <strong id="welcome-name"></strong>!<br>Your tracker is ready. Start logging today.</p>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:24px" id="summary-box"></div>
+    <button class="btn-next" onclick="finishSetup()">Start tracking 💪</button>
+  </div>
+
+</div>
+</div>
+
+<!-- ════════════════ MAIN APP ════════════════ -->
+<div id="app-wrap">
+
+<div class="topbar">
+  <div>
+    <h1>FitTrack 💪</h1>
+    <div class="date" id="topbar-date"></div>
+  </div>
+  <div class="streak-badge">🔥 <span id="streak-val">0</span> day</div>
+</div>
+
+<!-- TODAY -->
+<div class="screen active" id="screen-today">
+  <div class="score-card">
+    <div class="score-ring">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <circle class="ring-bg" cx="32" cy="32" r="27"/>
+        <circle class="ring-fill" id="ring-fill" cx="32" cy="32" r="27" stroke-dasharray="169.6" stroke-dashoffset="169.6"/>
+      </svg>
+      <div class="score-center">
+        <span class="score-num" id="score-num">0</span>
+        <span class="score-tot" id="score-tot">/ 0</span>
+      </div>
+    </div>
+    <div>
+      <div class="score-title" id="score-title">Let's go!</div>
+      <div class="score-msg" id="score-msg">Tap habits below to track your day.</div>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="section" style="margin-top:14px">
+    <div class="sec-label">steps today</div>
+    <div class="steps-card">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        <div style="font-size:32px;flex-shrink:0">👣</div>
+        <div style="flex:1;min-width:0">
+          <div class="steps-count" id="steps-count">0</div>
+          <div class="steps-goal" id="steps-goal-label">Goal: 8,000 steps</div>
+          <div id="pedometer-status" style="display:inline-block;margin-top:5px;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.06);color:var(--muted)">Starting…</div>
+        </div>
+        <div style="flex-shrink:0">
+          <button id="pedometer-btn" class="sbtn" style="font-size:13px;padding:9px 18px;border-radius:10px" onclick="togglePedometer()">⏸ Pause</button>
+          <div style="margin-top:6px">
+            <button class="sbtn" style="width:100%;color:var(--red);font-size:12px" onclick="resetSteps()">Reset</button>
+          </div>
+        </div>
+      </div>
+      <div class="steps-bar-wrap"><div class="steps-bar" id="steps-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Habits -->
+  <div class="section" style="margin-top:16px">
+    <div class="sec-label">habits</div>
+    <div class="habit-grid" id="habit-grid"></div>
+  </div>
+
+  <!-- Drinks (static) -->
+  <div class="section" style="margin-top:16px">
+    <div class="sec-label">drinks today</div>
+    <div class="counter-card">
+      <div class="drink-row">
+        <div class="drink-icon-lg">🍵</div>
+        <div class="drink-info"><div class="dname">Green tea</div><div class="dsub">Recommended 2–3 cups</div></div>
+        <div class="dcounter">
+          <button class="cbtn" onclick="adj('gt',-1)">−</button>
+          <span class="cval" id="gt-val">0</span>
+          <button class="cbtn" onclick="adj('gt',1)">+</button>
+        </div>
+      </div>
+      <div class="drink-row">
+        <div class="drink-icon-lg">☕</div>
+        <div class="drink-info"><div class="dname">Black coffee</div><div class="dsub">Max 3 cups recommended</div></div>
+        <div class="dcounter">
+          <button class="cbtn" onclick="adj('bc',-1)">−</button>
+          <span class="cval" id="bc-val">0</span>
+          <button class="cbtn" onclick="adj('bc',1)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sleep -->
+  <div class="section" style="margin-top:16px">
+    <div class="sec-label">sleep last night</div>
+    <div class="sleep-card">
+      <div class="sleep-top">
+        <div><span class="sleep-hrs" id="sleep-hrs">6.0</span><span class="sleep-unit"> hrs</span></div>
+        <div class="sleep-badge ok" id="sleep-badge">Below goal</div>
+      </div>
+      <input type="range" min="0" max="12" step="0.5" value="6" id="sleep-slider" oninput="updateSleep(this.value)">
+      <div class="sleep-msg" id="sleep-msg">Adjust the slider to log last night's sleep.</div>
+    </div>
+  </div>
+
+  <button class="save-btn" onclick="saveDay()">✅ Save today's log</button>
+</div>
+
+<!-- LOG -->
+<div class="screen" id="screen-log">
+  <div class="section" style="padding-top:20px">
+    <div class="sec-label">history</div>
+    <div id="log-list"></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="screen" id="screen-stats">
+  <div class="section" style="padding-top:20px">
+    <div class="sec-label">your stats</div>
+    <div id="stats-content"></div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="screen" id="screen-profile">
+  <div class="section" style="padding-top:20px">
+    <div class="sec-label">profile</div>
+    <div id="profile-content"></div>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <button class="bnav active" onclick="switchScreen('today',this)"><span class="bi">🏠</span>Today</button>
+  <button class="bnav" onclick="switchScreen('log',this)"><span class="bi">📋</span>Log</button>
+  <button class="bnav" onclick="switchScreen('stats',this)"><span class="bi">📊</span>Stats</button>
+  <button class="bnav" onclick="switchScreen('profile',this)"><span class="bi">👤</span>Profile</button>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DEFAULT HABIT LIBRARY ──
+const HABIT_LIBRARY = [
+  {id:'workout',  icon:'🏋️', label:'Workout',         sub:'Any exercise session'},
+  {id:'walk',     icon:'🚶', label:'Evening walk',     sub:'Walk after dinner'},
+  {id:'sugar',    icon:'🚫🍬',label:'No sugar',        sub:'Avoided sugar today'},
+  {id:'junk',     icon:'🚫🍔',label:'No junk food',    sub:'Clean eating all day'},
+  {id:'sleep6',   icon:'😴', label:'Sleep goal',       sub:'Hit your sleep target'},
+  {id:'active',   icon:'⚡', label:'Stayed active',    sub:'Physically active day'},
+  {id:'meditate', icon:'🧘', label:'Meditate',         sub:'Mindfulness session'},
+  {id:'water',    icon:'💧', label:'Drink 8 glasses',  sub:'Stay hydrated'},
+  {id:'stretch',  icon:'🤸', label:'Stretch/yoga',     sub:'Flexibility work'},
+  {id:'noalc',    icon:'🚫🍺',label:'No alcohol',      sub:'Alcohol-free day'},
+  {id:'reading',  icon:'📚', label:'Read 30 mins',     sub:'Daily reading habit'},
+  {id:'steps10k', icon:'🏃', label:'10k steps',        sub:'Reach 10,000 steps'},
+];
+
+let profile = {};
+let selectedHabitIds = ['workout','walk','sugar','junk','sleep6','active'];
+let customHabits = [];  // {id, icon, label, sub}
+
+let state = {
+  done:[], gt:0, bc:0, sleep:6, steps:0, log:[], streak:0,
+  sleepGoal:7.5, stepsGoal:8000,
+  lastSavedDate: '',   // YYYY-MM-DD of last saveDay() call — for streak logic
+  stepsDate: '',       // YYYY-MM-DD when steps were last counted — for midnight reset
+  stepsBase: 0         // steps saved before current pedometer session
+};
+
+// ── SETUP / ONBOARDING ──
+let currentStep = 0;
+
+function goStep(n) {
+  document.getElementById('step-'+currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('step-'+currentStep).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function calcBMI() {
+  const h = parseFloat(document.getElementById('inp-height').value);
+  const w = parseFloat(document.getElementById('inp-weight').value);
+  const box = document.getElementById('bmi-box');
+  const badge = document.getElementById('bmi-badge');
+  if (!h || !w || h < 100 || w < 20) { box.style.display='none'; return; }
+  const bmi = (w / ((h/100)**2)).toFixed(1);
+  let cat, color;
+  if (bmi < 18.5)      { cat='Underweight'; color='#60a5fa'; }
+  else if (bmi < 25)   { cat='Normal';      color='#22c55e'; }
+  else if (bmi < 30)   { cat='Overweight';  color='#f59e0b'; }
+  else                 { cat='Obese';        color='#f87171'; }
+  badge.textContent = `BMI ${bmi} — ${cat}`;
+  badge.style.background = color+'22'; badge.style.color = color; badge.style.border = '1px solid '+color+'55';
+  box.style.display = 'block';
+}
+
+function validateProfile() {
+  const name = document.getElementById('inp-name').value.trim();
+  const age  = document.getElementById('inp-age').value;
+  const h    = document.getElementById('inp-height').value;
+  const w    = document.getElementById('inp-weight').value;
+  if (!name) { showToast('Please enter your name'); return; }
+  if (!age)  { showToast('Please enter your age'); return; }
+  if (!h || !w) { showToast('Please enter height and weight'); return; }
+  profile = {
+    name, age: parseInt(age),
+    gender: document.getElementById('inp-gender').value,
+    height: parseFloat(h), weight: parseFloat(w),
+    bmi: (parseFloat(w)/((parseFloat(h)/100)**2)).toFixed(1)
+  };
+  renderHabitPicker();
+  goStep(2);
+}
+
+function renderHabitPicker() {
+  const grid = document.getElementById('habit-picker');
+  grid.innerHTML = '';
+  HABIT_LIBRARY.forEach(h => {
+    const sel = selectedHabitIds.includes(h.id);
+    const div = document.createElement('div');
+    div.className = 'hpick' + (sel ? ' sel' : '');
+    div.innerHTML = `<span class="hpick-check">✓</span><div class="hpick-icon">${h.icon}</div><div class="hpick-label">${h.label}</div>`;
+    div.onclick = () => {
+      if (selectedHabitIds.includes(h.id)) selectedHabitIds = selectedHabitIds.filter(x => x !== h.id);
+      else selectedHabitIds.push(h.id);
+      div.classList.toggle('sel');
+    };
+    grid.appendChild(div);
+  });
+}
+
+function addCustomHabit() {
+  const inp = document.getElementById('custom-habit-inp');
+  const label = inp.value.trim();
+  if (!label) return;
+  const id = 'custom_' + Date.now();
+  customHabits.push({ id, icon:'⭐', label, sub:'Custom habit' });
+  selectedHabitIds.push(id);
+  inp.value = '';
+  renderCustomTags();
+}
+
+function renderCustomTags() {
+  const wrap = document.getElementById('custom-tags');
+  wrap.innerHTML = '';
+  customHabits.forEach(h => {
+    const tag = document.createElement('span');
+    tag.className = 'custom-tag';
+    tag.innerHTML = `${h.icon} ${h.label} <button onclick="removeCustom('${h.id}')">✕</button>`;
+    wrap.appendChild(tag);
+  });
+}
+
+function removeCustom(id) {
+  customHabits = customHabits.filter(h => h.id !== id);
+  selectedHabitIds = selectedHabitIds.filter(x => x !== id);
+  renderCustomTags();
+}
+
+function validateHabits() {
+  if (selectedHabitIds.length === 0) { showToast('Pick at least one habit'); return; }
+  goStep(3);
+}
+
+function finishSetup() {
+  state.sleepGoal  = parseFloat(document.getElementById('sleep-goal-slider').value);
+  state.stepsGoal  = parseInt(document.getElementById('steps-goal-slider').value);
+  profile.setupDone = true;
+  saveAll();
+  document.getElementById('setup-wrap').style.display = 'none';
+  document.getElementById('app-wrap').style.display   = 'block';
+  initApp();
+}
+
+// show summary on step 4
+function goStep(n) {
+  document.getElementById('step-'+currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('step-'+currentStep).classList.add('active');
+  window.scrollTo(0,0);
+  if (n === 4) {
+    document.getElementById('welcome-name').textContent = profile.name;
+    const allHabits = getAllHabits();
+    const chosen = allHabits.filter(h => selectedHabitIds.includes(h.id));
+    document.getElementById('summary-box').innerHTML = `
+      <div style="font-size:13px;color:var(--muted);line-height:1.9">
+        👤 <strong style="color:var(--text)">${profile.name}</strong>, ${profile.age} yrs &nbsp;·&nbsp; BMI ${profile.bmi}<br>
+        😴 Sleep goal: <strong style="color:var(--text)">${parseFloat(document.getElementById('sleep-goal-slider').value).toFixed(1)} hrs</strong><br>
+        👣 Steps goal: <strong style="color:var(--text)">${parseInt(document.getElementById('steps-goal-slider').value).toLocaleString()} steps</strong><br>
+        ✅ Habits: <strong style="color:var(--text)">${chosen.map(h=>h.label).join(', ')}</strong>
+      </div>`;
+  }
+}
+
+// ── HELPERS ──
+function getAllHabits() {
+  const lib = HABIT_LIBRARY.filter(h => selectedHabitIds.includes(h.id));
+  return [...lib, ...customHabits];
+}
+
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getYesterdayKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getTimeStr() { return new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}); }
+function getDateStr(d) { return (d||new Date()).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}); }
+
+function saveAll() {
+  localStorage.setItem('fittrack_profile_v4', JSON.stringify(profile));
+  localStorage.setItem('fittrack_habits_v4',  JSON.stringify({selectedHabitIds, customHabits}));
+  localStorage.setItem('fittrack_state_v4',   JSON.stringify(state));
+}
+
+function loadAll() {
+  try {
+    const p = localStorage.getItem('fittrack_profile_v4');
+    const h = localStorage.getItem('fittrack_habits_v4');
+    const s = localStorage.getItem('fittrack_state_v4');
+    if (p) profile = JSON.parse(p);
+    if (h) { const hd = JSON.parse(h); selectedHabitIds = hd.selectedHabitIds||[]; customHabits = hd.customHabits||[]; }
+    if (s) { state = {...state, ...JSON.parse(s)}; }
+  } catch(e) {}
+  // Run midnight checks every time app loads / reopens
+  checkMidnightReset();
+}
+
+// ── MIDNIGHT RESET: steps reset if it's a new day ──
+function checkMidnightReset() {
+  const today = getTodayKey();
+  // Steps: reset if stepsDate is set but is a previous day
+  if (state.stepsDate && state.stepsDate !== today) {
+    state.steps     = 0;
+    state.stepsBase = 0;
+    state.stepsDate = today;
+    console.log('[FitTrack] New day — steps reset to 0');
+  }
+  // If no stepsDate yet, stamp today
+  if (!state.stepsDate) state.stepsDate = today;
+
+  // Habits/drinks/sleep: reset today's state if it's a new day since last save
+  if (state.lastSavedDate && state.lastSavedDate !== today) {
+    // Don't wipe log — just clear today's in-progress state
+    state.done  = [];
+    state.gt    = 0;
+    state.bc    = 0;
+    state.sleep = state.sleepGoal || 7.5;
+    console.log('[FitTrack] New day — daily state reset');
+  }
+}
+
+// ── STREAK: schedule next midnight check while app is open ──
+function scheduleMidnightCheck() {
+  const now  = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5); // 00:00:05 next day
+  const msUntilMidnight = next - now;
+  setTimeout(() => {
+    checkMidnightReset();
+    saveAll();
+    // Re-init UI so steps counter shows 0 and date updates
+    if (profile.setupDone) initApp();
+    scheduleMidnightCheck(); // reschedule for next midnight
+  }, msUntilMidnight);
+  console.log('[FitTrack] Next midnight reset in', Math.round(msUntilMidnight/60000), 'min');
+}
+
+// ── APP INIT ──
+function initApp() {
+  document.getElementById('topbar-date').textContent  = getDateStr();
+  document.getElementById('streak-val').textContent   = state.streak;
+  document.getElementById('sleep-slider').value       = state.sleep;
+  document.getElementById('gt-val').textContent       = state.gt;
+  document.getElementById('bc-val').textContent       = state.bc;
+  // Steps are persisted in state — restored from localStorage automatically
+  updateStepsUI();
+  updateSleep(state.sleep, false);
+  renderHabits();
+  updateScore();
+  scheduleMidnightCheck();
+  // Pedometer auto-starts via 'deviceready' Capacitor event
+}
+
+// ── TODAY ──
+function renderHabits() {
+  const grid = document.getElementById('habit-grid');
+  grid.innerHTML = '';
+  const habits = getAllHabits().filter(h => selectedHabitIds.includes(h.id));
+  document.getElementById('score-tot').textContent = '/ ' + habits.length;
+  habits.forEach(h => {
+    const done = state.done.includes(h.id);
+    const card = document.createElement('div');
+    card.className = 'habit-card' + (done ? ' done' : '');
+    card.innerHTML = `<div class="hcheck">${done?'✓':''}</div><span class="hicon">${h.icon}</span><div class="hlabel">${h.label}</div><div class="hsub">${h.sub}</div>`;
+    card.onclick = () => toggleHabit(h.id);
+    grid.appendChild(card);
+  });
+}
+
+function toggleHabit(id) {
+  if (state.done.includes(id)) state.done = state.done.filter(x=>x!==id);
+  else state.done.push(id);
+  saveAll(); renderHabits(); updateScore();
+}
+
+function updateScore() {
+  const habits = getAllHabits().filter(h => selectedHabitIds.includes(h.id));
+  const total  = habits.length;
+  const n      = state.done.filter(id => selectedHabitIds.includes(id)).length;
+  const pct    = total > 0 ? n/total : 0;
+  document.getElementById('ring-fill').style.strokeDashoffset = 169.6 - 169.6*pct;
+  document.getElementById('score-num').textContent = n;
+  document.getElementById('score-tot').textContent = '/ '+total;
+  const t = pct===0?'Let\'s go!':pct<.34?'Good start 👍':pct<.67?'Halfway there!':pct<1?'Almost perfect!':'Perfect score! 🏆';
+  const m = pct===0?'Tap habits below to track your day.':pct<.5?'Keep going!':pct<1?'You\'re crushing it!':'You nailed every habit today!';
+  document.getElementById('score-title').textContent = t;
+  document.getElementById('score-msg').textContent   = m;
+}
+
+// ── PEDOMETER (Native Android Step Counter via Capacitor) ──
+let pedometerActive  = false;
+let stepListenerHandle = null;
+let stepBaseCount    = null; // hardware counter offset at session start
+
+// Capacitor plugin reference — loaded after deviceready
+let Pedometer = null;
+
+document.addEventListener('deviceready', () => {
+  try {
+    Pedometer = window.Capacitor?.Plugins?.CapacitorPedometer || null;
+    console.log('[FitTrack] Capacitor ready, Pedometer:', Pedometer ? 'found' : 'not found');
+  } catch(e) { console.warn('[FitTrack] Capacitor init error', e); }
+  autoStartPedometer();
+}, false);
+
+async function togglePedometer() {
+  if (pedometerActive) pausePedometer();
+  else resumePedometer();
+}
+
+async function autoStartPedometer() {
+  try {
+    if (!Pedometer) {
+      // Fallback: still in browser/PWA mode
+      console.log('[FitTrack] No native pedometer, skipping auto-start');
+      updatePedometerUI('unavailable');
+      return;
+    }
+    await startNativePedometer();
+  } catch(e) {
+    console.warn('[FitTrack] autoStartPedometer error:', e);
+    updatePedometerUI('unavailable');
+  }
+}
+
+async function startNativePedometer() {
+  if (!Pedometer) return;
+  try {
+    // Request permission (Android 10+ requires ACTIVITY_RECOGNITION)
+    const perm = await Pedometer.requestPermissions();
+    if (perm?.activityRecognition !== 'granted' && perm?.activityRecognition !== undefined) {
+      updatePedometerUI('denied');
+      return;
+    }
+
+    // Subscribe to step updates — fires every ~1 second with cumulative count
+    stepListenerHandle = await Pedometer.addListener('step', (data) => {
+      // data.numberOfSteps = cumulative hardware counter since boot
+      // We track the delta from when we started this session
+      if (stepBaseCount === null) stepBaseCount = data.numberOfSteps;
+      const sessionSteps = data.numberOfSteps - stepBaseCount;
+      // Add session steps ON TOP of any steps already saved today
+      const savedBase = state.stepsBase || 0;
+      state.steps = savedBase + Math.max(0, sessionSteps);
+      state.stepsDate = getTodayKey();
+      updateStepsUI();
+      if (state.steps % 20 === 0) saveAll();
+    });
+
+    pedometerActive = true;
+    updatePedometerUI(true);
+    console.log('[FitTrack] Native pedometer started');
+  } catch(e) {
+    console.warn('[FitTrack] startNativePedometer error:', e);
+    updatePedometerUI('unavailable');
+  }
+}
+
+function pausePedometer() {
+  if (stepListenerHandle) {
+    stepListenerHandle.remove();
+    stepListenerHandle = null;
+  }
+  // Save current steps as the base for next resume
+  state.stepsBase = state.steps;
+  stepBaseCount   = null;
+  pedometerActive = false;
+  updatePedometerUI(false);
+  saveAll();
+}
+
+function resumePedometer() {
+  stepBaseCount = null; // reset base so next event sets it fresh
+  startNativePedometer();
+}
+
+function updatePedometerUI(status) {
+  const btn = document.getElementById('pedometer-btn');
+  const sts = document.getElementById('pedometer-status');
+  if (!btn || !sts) return;
+  if (status === true) {
+    btn.textContent = '⏸ Pause'; btn.style.color = 'var(--text)';
+    sts.textContent = '● Tracking'; sts.style.background = 'var(--gbg)'; sts.style.color = 'var(--green)';
+  } else if (status === false) {
+    btn.textContent = '▶ Resume'; btn.style.color = 'var(--muted)';
+    sts.textContent = '⏸ Paused'; sts.style.background = 'rgba(255,255,255,0.06)'; sts.style.color = 'var(--muted)';
+  } else if (status === 'denied') {
+    btn.textContent = '▶ Resume'; btn.style.color = 'var(--amber)';
+    sts.textContent = '⚠ Permission'; sts.style.background = 'var(--abg)'; sts.style.color = 'var(--amber)';
+  } else {
+    btn.textContent = '▶ Resume'; btn.style.color = 'var(--muted)';
+    sts.textContent = 'Unavailable'; sts.style.background = 'rgba(255,255,255,0.06)'; sts.style.color = 'var(--muted)';
+  }
+}
+
+function addSteps(delta) {
+  state.steps = Math.max(0, state.steps + delta);
+  saveAll(); updateStepsUI();
+}
+
+function resetSteps() {
+  if (!confirm('Reset step count to 0?')) return;
+  const wasActive = pedometerActive;
+  if (wasActive) pausePedometer();
+  state.steps     = 0;
+  state.stepsBase = 0;
+  stepBaseCount   = null;
+  saveAll();
+  updateStepsUI();
+  if (wasActive) resumePedometer();
+  showToast('Steps reset to 0');
+}
+
+function updateStepsUI() {
+  const goal = state.stepsGoal || 8000;
+  const pct  = Math.min(100, Math.round((state.steps/goal)*100));
+  document.getElementById('steps-count').textContent = state.steps.toLocaleString();
+  document.getElementById('steps-bar').style.width   = pct+'%';
+  document.getElementById('steps-bar').style.background = pct>=100?'var(--green)':'var(--blue)';
+  document.getElementById('steps-goal-label').textContent = `Goal: ${goal.toLocaleString()} steps · ${pct}%`;
+}
+
+function adj(key, delta) {
+  state[key] = Math.max(0, state[key]+delta);
+  document.getElementById(key+'-val').textContent = state[key];
+  saveAll();
+}
+
+function updateSleep(v, doSave) {
+  state.sleep = parseFloat(v);
+  document.getElementById('sleep-hrs').textContent = state.sleep.toFixed(1);
+  const goal  = state.sleepGoal || 7.5;
+  const badge = document.getElementById('sleep-badge');
+  const msg   = document.getElementById('sleep-msg');
+  if (state.sleep >= goal) {
+    badge.className='sleep-badge good'; badge.textContent='Goal met ✓';
+    msg.textContent=`Great! You hit your ${goal}hr sleep goal.`;
+    if (!state.done.includes('sleep6')) { state.done.push('sleep6'); renderHabits(); updateScore(); }
+  } else if (state.sleep >= goal-1) {
+    badge.className='sleep-badge ok'; badge.textContent='Close!';
+    msg.textContent=`Just ${(goal-state.sleep).toFixed(1)}hrs short of your ${goal}hr goal.`;
+    if (!state.done.includes('sleep6')) { state.done.push('sleep6'); renderHabits(); updateScore(); }
+  } else {
+    badge.className='sleep-badge low'; badge.textContent='Below goal';
+    msg.textContent=`Try to get ${goal} hours. Short sleep affects recovery.`;
+    state.done = state.done.filter(x=>x!=='sleep6'); renderHabits(); updateScore();
+  }
+  if (doSave !== false) saveAll();
+}
+
+function saveDay() {
+  const todayKey = getTodayKey();
+  const habits   = getAllHabits().filter(h => selectedHabitIds.includes(h.id));
+  const entry    = {
+    dateKey: todayKey, date: getDateStr(), time: getTimeStr(), ts: Date.now(),
+    habits: [...state.done], gt: state.gt, bc: state.bc,
+    sleep: state.sleep, steps: state.steps, score: state.done.filter(id=>selectedHabitIds.includes(id)).length,
+    total: habits.length
+  };
+  const idx   = state.log.findIndex(e => e.dateKey === todayKey);
+  const isNew = idx === -1;
+
+  if (isNew) {
+    state.log.unshift(entry);
+    if (state.log.length > 30) state.log = state.log.slice(0, 30);
+
+    // ── Streak logic: only increment if yesterday was also logged ──
+    const yesterday = getYesterdayKey();
+    const loggedYesterday = state.log.some(e => e.dateKey === yesterday);
+    const noPriorLog      = state.log.length === 1; // very first ever entry
+
+    if (noPriorLog || loggedYesterday) {
+      state.streak += 1;
+    } else {
+      // Gap detected — restart streak from 1
+      state.streak = 1;
+    }
+    state.lastSavedDate = todayKey;
+    document.getElementById('streak-val').textContent = state.streak;
+
+  } else {
+    // Updating same day — no streak change, just update entry
+    state.log[idx] = entry;
+    state.lastSavedDate = todayKey;
+  }
+
+  // Stamp stepsDate so midnight reset knows when steps were counted
+  state.stepsDate = todayKey;
+  saveAll();
+  showToast(isNew ? 'Day saved! 🎯' : 'Log updated! ✏️');
+  renderLog();
+}
+
+// ── LOG ──
+function renderLog() {
+  const list = document.getElementById('log-list');
+  if (!state.log.length) {
+    list.innerHTML = '<div class="log-empty"><div class="log-emoji">📋</div>No logs yet.<br>Save your first day from the Today tab.</div>';
+    return;
+  }
+  const allHabits = getAllHabits();
+  list.innerHTML = '';
+  state.log.forEach(e => {
+    const card = document.createElement('div');
+    card.className = 'log-entry-card';
+    const pills = allHabits.filter(h=>selectedHabitIds.includes(h.id)).map(h=>
+      `<span class="lpill ${e.habits.includes(h.id)?'done':''}">${h.icon} ${h.label}</span>`
+    ).join('');
+    card.innerHTML = `
+      <div class="log-entry-top">
+        <div><div class="log-entry-date">${e.date}</div><div class="log-entry-time">Saved ${e.time||''}</div></div>
+        <div class="log-entry-score">${e.score}/${e.total||'?'}</div>
+      </div>
+      <div class="log-pills">${pills}</div>
+      <div class="log-meta">
+        <span>👣 ${(e.steps||0).toLocaleString()} steps</span>
+        <span>🍵 ${e.gt} tea</span>
+        <span>☕ ${e.bc} coffee</span>
+        <span>😴 ${parseFloat(e.sleep).toFixed(1)}h sleep</span>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+// ── STATS ──
+function renderStats() {
+  const cont = document.getElementById('stats-content');
+  if (!state.log.length) {
+    cont.innerHTML = '<div class="log-empty"><div class="log-emoji">📊</div>No data yet.<br>Log a few days to see your stats.</div>';
+    return;
+  }
+  const days     = state.log.length;
+  const avgScore = (state.log.reduce((s,e)=>s+(e.total>0?e.score/e.total:0),0)/days*100).toFixed(0);
+  const avgSleep = (state.log.reduce((s,e)=>s+parseFloat(e.sleep),0)/days).toFixed(1);
+  const avgSteps = Math.round(state.log.reduce((s,e)=>s+(e.steps||0),0)/days);
+  const totalGt  = state.log.reduce((s,e)=>s+e.gt,0);
+  const totalBc  = state.log.reduce((s,e)=>s+e.bc,0);
+  const allH     = getAllHabits().filter(h=>selectedHabitIds.includes(h.id));
+  const counts   = {};
+  allH.forEach(h => counts[h.id]=0);
+  state.log.forEach(e => e.habits.forEach(id=>{ if(counts[id]!==undefined) counts[id]++; }));
+
+  let html = `<div class="stat-grid">
+    <div class="stat-box"><div class="stat-val" style="color:var(--green)">${avgScore}%</div><div class="stat-label">avg completion</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--blue)">${avgSleep}h</div><div class="stat-label">avg sleep</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--amber)">${state.streak}</div><div class="stat-label">day streak 🔥</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--purple)">${avgSteps.toLocaleString()}</div><div class="stat-label">avg steps 👣</div></div>
+  </div>
+  <div class="sec-label" style="margin-bottom:10px">habit consistency</div>
+  <div class="consist-card">`;
+  allH.forEach(h => {
+    const pct = days>0?Math.round((counts[h.id]/days)*100):0;
+    html += `<div class="consist-row">
+      <div class="consist-top"><span>${h.icon} ${h.label}</span><span style="color:var(--muted);font-weight:600">${pct}%</span></div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+    </div>`;
+  });
+  html += `<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap">
+    <span>🍵 ${totalGt} teas total</span><span>☕ ${totalBc} coffees total</span><span>📅 ${days} days logged</span>
+  </div></div>`;
+  cont.innerHTML = html;
+}
+
+// ── PROFILE ──
+function renderProfile() {
+  const cont = document.getElementById('profile-content');
+  const bmi  = profile.bmi;
+  let bmiCat = '—', bmiColor = 'var(--muted)';
+  if (bmi < 18.5) { bmiCat='Underweight'; bmiColor='var(--blue)'; }
+  else if (bmi<25){ bmiCat='Normal';      bmiColor='var(--green)';}
+  else if (bmi<30){ bmiCat='Overweight';  bmiColor='var(--amber)';}
+  else            { bmiCat='Obese';       bmiColor='var(--red)';  }
+  const allH = getAllHabits().filter(h=>selectedHabitIds.includes(h.id));
+  cont.innerHTML = `
+    <div class="profile-card">
+      <div class="profile-avatar">💪</div>
+      <div class="profile-name">${profile.name||'—'}</div>
+      <div class="profile-meta">${profile.age||'—'} yrs${profile.gender?` · ${profile.gender}`:''}</div>
+    </div>
+    <div class="profile-card">
+      <div class="info-row"><span class="label">Height</span><span class="val">${profile.height||'—'} cm</span></div>
+      <div class="info-row"><span class="label">Weight</span><span class="val">${profile.weight||'—'} kg</span></div>
+      <div class="info-row"><span class="label">BMI</span><span class="val" style="color:${bmiColor}">${bmi} — ${bmiCat}</span></div>
+      <div class="info-row"><span class="label">Sleep goal</span><span class="val">${state.sleepGoal} hrs</span></div>
+      <div class="info-row"><span class="label">Steps goal</span><span class="val">${(state.stepsGoal||8000).toLocaleString()} steps</span></div>
+    </div>
+    <div class="profile-card">
+      <div class="sec-label" style="margin-bottom:10px">active habits (${allH.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${allH.map(h=>`<span style="background:var(--gbg);color:var(--green);font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid var(--gborder)">${h.icon} ${h.label}</span>`).join('')}</div>
+    </div>
+    <button class="edit-btn" onclick="resetSetup()">⚙️ Edit profile & habits</button>`;
+}
+
+function resetSetup() {
+  if (!confirm('This will take you back to setup. Your log data will be kept.')) return;
+  profile.setupDone = false;
+  saveAll();
+  document.getElementById('app-wrap').style.display   = 'none';
+  document.getElementById('setup-wrap').style.display = 'block';
+  goStep(1);
+}
+
+// ── NAV ──
+function switchScreen(name, btn) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.bnav').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='log')     renderLog();
+  if (name==='stats')   renderStats();
+  if (name==='profile') renderProfile();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── BOOT ──
+loadAll();
+if (profile.setupDone) {
+  document.getElementById('setup-wrap').style.display = 'none';
+  document.getElementById('app-wrap').style.display   = 'block';
+  initApp(); // scheduleMidnightCheck is called inside initApp
+} else {
+  document.getElementById('setup-wrap').style.display = 'block';
+  document.getElementById('app-wrap').style.display   = 'none';
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(e=>console.log('SW:',e));
+  });
+}
+</script>
+</body>
+</html>
