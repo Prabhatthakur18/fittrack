@@ -3,100 +3,81 @@ name: Build FitTrack APK
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Checkout code ──
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Setup Node.js ──
-      - name: Setup Node.js
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
 
-      # ── 3. Install dependencies ──
       - name: Install npm dependencies
         run: npm install
 
-      # ── 4. Setup Java 17 (required for Android build) ──
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 5. Setup Android SDK ──
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # ── 6. Add Android platform ──
       - name: Add Capacitor Android platform
         run: npx cap add android
 
-      # ── 7. Patch AndroidManifest.xml — add ACTIVITY_RECOGNITION permission ──
       - name: Patch AndroidManifest.xml
         run: |
           FILE="android/app/src/main/AndroidManifest.xml"
-          # Add permissions before <application tag
           sed -i 's|<application|<uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>\n    <uses-permission android:name="com.google.android.gms.permission.ACTIVITY_RECOGNITION"/>\n\n    <application|' "$FILE"
-          echo "✅ AndroidManifest patched"
-          grep "ACTIVITY_RECOGNITION" "$FILE"
+          echo "=== AndroidManifest.xml permissions ==="
+          grep -A1 "ACTIVITY" "$FILE" || echo "WARNING: permission not found"
 
-      # ── 8. Patch MainActivity.java — register Pedometer plugin ──
       - name: Patch MainActivity.java
         run: |
           FILE="android/app/src/main/java/com/fittrack/app/MainActivity.java"
-          cat > "$FILE" << 'JAVA'
-          package com.fittrack.app;
+          echo "=== Writing MainActivity.java ==="
+          printf 'package com.fittrack.app;\n\nimport android.os.Bundle;\nimport com.getcapacitor.BridgeActivity;\nimport io.capgo.capgopedomter.CapacitorPedometer;\n\npublic class MainActivity extends BridgeActivity {\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        registerPlugin(CapacitorPedometer.class);\n        super.onCreate(savedInstanceState);\n    }\n}\n' > "$FILE"
+          echo "=== MainActivity.java contents ==="
+          cat "$FILE"
 
-          import android.os.Bundle;
-          import com.getcapacitor.BridgeActivity;
-          import io.capgo.capgopedomter.CapacitorPedometer;
-
-          public class MainActivity extends BridgeActivity {
-              @Override
-              public void onCreate(Bundle savedInstanceState) {
-                  registerPlugin(CapacitorPedometer.class);
-                  super.onCreate(savedInstanceState);
-              }
-          }
-          JAVA
-          echo "✅ MainActivity.java patched"
-
-      # ── 9. Sync web assets into Android project ──
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # ── 10. Make gradlew executable ──
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # ── 11. Build debug APK ──
+      - name: Show Android SDK info
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          ls "$ANDROID_HOME/platforms/" || true
+
       - name: Build APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --warning-mode all 2>&1
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          JAVA_HOME: ${{ env.JAVA_HOME }}
 
-      # ── 12. Upload APK as downloadable artifact ──
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FitTrack-debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── 13. Print success message ──
       - name: Done
         run: |
-          echo "✅ APK built successfully!"
-          echo "📦 Download from: Actions tab → this workflow run → Artifacts section"
+          echo "✅ Build complete!"
           ls -lh android/app/build/outputs/apk/debug/
