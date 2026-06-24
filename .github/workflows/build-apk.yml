@@ -45,7 +45,7 @@ jobs:
         run: |
           FILE="android/app/src/main/java/com/fittrack/app/MainActivity.java"
           echo "=== Writing MainActivity.java ==="
-          printf 'package com.fittrack.app;\n\nimport android.os.Bundle;\nimport com.getcapacitor.BridgeActivity;\nimport io.capgo.capgopedomter.CapacitorPedometer;\n\npublic class MainActivity extends BridgeActivity {\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        registerPlugin(CapacitorPedometer.class);\n        super.onCreate(savedInstanceState);\n    }\n}\n' > "$FILE"
+          printf 'package com.fittrack.app;\n\nimport android.os.Bundle;\nimport com.getcapacitor.BridgeActivity;\nimport app.capgo.pedometer.CapacitorPedometerPlugin;\n\npublic class MainActivity extends BridgeActivity {\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        registerPlugin(CapacitorPedometerPlugin.class);\n        super.onCreate(savedInstanceState);\n    }\n}\n' > "$FILE"
           echo "=== MainActivity.java contents ==="
           cat "$FILE"
 
